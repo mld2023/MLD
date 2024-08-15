@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <!-- Version: 1.5.0 (2024-08-15) 
+         Changes: 
+        - 월령 낮잠 횟수별 지속시간 미세조정
+        - 깨어 있는 시간 증가폭 수정
+    -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>마리드 유아 일정</title>
@@ -197,10 +202,10 @@
             11: { awakeTime: 150, napCount: 2 },
             12: { awakeTime: 180, napCount: 2 },
             13: { awakeTime: 180, napCount: 2 },
-            14: { awakeTime: 210, napCount: 2 },
-            15: { awakeTime: 210, napCount: 2 },
-            16: { awakeTime: 240, napCount: 1 },
-            17: { awakeTime: 240, napCount: 1 },
+            14: { awakeTime: 180, napCount: 1 },
+            15: { awakeTime: 180, napCount: 1 },
+            16: { awakeTime: 210, napCount: 1 },
+            17: { awakeTime: 210, napCount: 1 },
             18: { awakeTime: 240, napCount: 1 },
             19: { awakeTime: 240, napCount: 1 },
             20: { awakeTime: 300, napCount: 1 }
@@ -210,18 +215,18 @@
         const NAP_DURATIONS_BY_AGE_AND_COUNT = {
             3: { 4: [70, 90, 60, 30], 3: [90, 90, 70] },
             4: { 4: [60, 90, 40, 30], 3: [80, 100, 40] },
-            5: { 4: [60, 90, 30, 30], 3: [80, 100, 30] },
-            6: { 3: [80, 90, 30] },
-            7: { 3: [60, 90, 30], 2: [90, 90] },
-            8: { 3: [60, 80, 30], 2: [90, 90] },
+            5: { 4: [60, 90, 30, 30], 3: [70, 100, 20] },
+            6: { 3: [70, 100, 20] },
+            7: { 3: [60, 90, 20], 2: [90, 90] },
+            8: { 3: [60, 80, 20], 2: [90, 90] },
             9: { 2: [90, 90] },
-            10: { 2: [90, 80] },
-            11: { 2: [90, 60], 1: [180] },
-            12: { 2: [90, 40], 1: [180] },
-            13: { 2: [90, 40], 1: [180] },
-            14: { 2: [90, 30], 1: [180] },
-            15: { 2: [90, 30], 1: [180] },
-            16: { 2: [90, 30], 1: [150] },
+            10: { 2: [80, 90] },
+            11: { 2: [60, 90], 1: [180] },
+            12: { 2: [60, 90], 1: [180] },
+            13: { 2: [60, 90], 1: [180] },
+            14: { 2: [60, 90], 1: [180] },
+            15: { 2: [60, 70], 1: [180] },
+            16: { 2: [60, 60], 1: [180] },
             17: { 1: [150] },
             18: { 1: [150] },
             19: { 1: [150] },
@@ -271,6 +276,16 @@
             return napDurations[napIndex] || 90; // 해당 인덱스의 낮잠 시간이 없으면 기본값 사용
         }
 
+        function getAwakeTimeIncrease(age) {
+            if (age < 9) {
+                return 10; // 9개월 미만: 10분씩 증가
+            } else if (age < 13) {
+                return 15; // 9개월 이상 13개월 미만: 15분씩 증가
+            } else {
+                return 20; // 13개월 이상: 20분씩 증가
+            }
+        }
+
         function minutesToTimeString(totalMinutes) {
             const hours = Math.floor(totalMinutes / 60);
             const minutes = totalMinutes % 60;
@@ -297,8 +312,7 @@
                 return;
             }
 
-            const schedule = scheduleData[age];
-            const awakeTimeMinutes = userAwakeTimeMinutes || schedule.awakeTime;
+            const awakeTimeMinutes = userAwakeTimeMinutes || scheduleData[age].awakeTime;
 
             // 스케줄 생성
             const dailySchedule = [];
@@ -308,12 +322,7 @@
             dailySchedule.push({ time: minutesToTimeString(currentTimeMinutes), activity: "기상" });
 
             for (let i = 0; i < napCount; i++) {
-                let awakeTimeIncrease;
-                if (age < 9) {
-                    awakeTimeIncrease = 10; // 9개월 미만: 10분씩 증가
-                } else {
-                    awakeTimeIncrease = 15; // 9개월 이상: 15분씩 증가
-                }
+                const awakeTimeIncrease = getAwakeTimeIncrease(age);
                 const awakeTimeForThisNapMinutes = awakeTimeMinutes + (i * awakeTimeIncrease);
                 
                 currentTimeMinutes += awakeTimeForThisNapMinutes;
@@ -332,7 +341,7 @@
             // 마지막 깨어있는 시간 추가
             const lastAwakeTimeMinutes = 1440 - totalScheduleMinutes - nightSleepDurationMinutes; // 1440 = 24시간
             if (lastAwakeTimeMinutes < 0) {
-                showError("일정이 24시간을 초과합니다. 입력 값을 조정해주세요.");
+                showError("일정이 24시간을 초과합니다. 새로고침 후 입력 값을 조정해주세요.");
                 return;
             }
 
@@ -340,7 +349,7 @@
             totalScheduleMinutes += lastAwakeTimeMinutes;
 
             // 밤잠 시작 시간 추가
-            dailySchedule.push({ time: minutesToTimeString(currentTimeMinutes), activity: "밤잠 시작" });
+            dailySchedule.push({ time: minutesToTimeString(currentTimeMinutes), activity: "밤잠" });
 
             // 테이블에 스케줄 표시
             scheduleTable.innerHTML = '';
